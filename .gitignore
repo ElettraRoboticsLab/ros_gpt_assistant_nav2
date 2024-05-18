@@ -1,0 +1,22 @@
+# ide and system files
+*.iml
+*.swp
+.project
+.pydevproject
+.DS_Store
+.idea
+
+.vscode/*
+
+# colcon/CMake output
+build
+install
+log
+
+# Python files
+__pycache__
+*.pyc
+venv
+
+# Secrets
+.env

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ros_gpt_assistant_nav2</name>
+  <version>1.0.0</version>
+  <description>A ROS2 node that uses OpenAI GPT Assistant to generate navigation instructions for nav2.</description>
+  <maintainer email="info@elettraroboticslab.it">Elettra Robotics Lab</maintainer>
+  <license>GPL-3.0-only</license>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
