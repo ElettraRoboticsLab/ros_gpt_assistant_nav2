@@ -27,6 +27,9 @@ class OpenAIAssistantParser(Node):
             10,
         )
 
+        self.openai_status_publisher = self.create_publisher(String, '/openai_status', 10)
+        self.openai_output_publisher = self.create_publisher(String, '/openai_output', 10)
+
         self._info(f"OpenAI Assistant Prompt Parser node ready and "
                    f"waiting for prompts on {self.prompt_topic} topic.")
 
@@ -64,16 +67,28 @@ class OpenAIAssistantParser(Node):
         """
         pass
 
+    def _update_topic_status(self, status: str) -> None:
+        msg = String()
+        msg.data = status
+        self.openai_status_publisher.publish(msg)
+
+    def _update_topic_output(self, output: dict) -> None:
+        msg = String()
+        msg.data = json.dumps(output)
+        self.openai_output_publisher.publish(msg)
+
     def _parse_prompt(self, prompt: str) -> dict:
         """
         Parse the prompt and send it to the OpenAI Assistant.
         """
+        self._update_topic_status("sending")
         self._debug("Sending prompt to OpenAI Assistant...")
         self.client.beta.threads.messages.create(
             thread_id=self.thread.id,
             role="user",
             content=prompt,
         )
+        self._update_topic_status("waiting")
         self._info("Waiting for response...")
         run = self.client.beta.threads.runs.create_and_poll(
             thread_id=self.thread.id,
@@ -81,7 +96,10 @@ class OpenAIAssistantParser(Node):
         )
         self._debug("Parsing run...")
         # self._debug(f"Run: {run}")
-        return self._parse_run(run)
+        out = self._parse_run(run)
+        self._update_topic_output(out)
+        self._update_topic_status("completed")
+        return out
 
     def _parse_run(self, run: Run) -> dict:
         """

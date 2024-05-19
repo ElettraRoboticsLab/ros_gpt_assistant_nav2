@@ -41,7 +41,6 @@ class Nav2RosGptAssistant(OpenAIAssistantParser):
 
         self.tts_publisher = self.create_publisher(String, '/tts', 10)
 
-
     def handle_dict_response(self, response: dict) -> None:
         """
         Override the default response handler to add custom handling.
