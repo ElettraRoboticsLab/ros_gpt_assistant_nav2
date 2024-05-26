@@ -27,8 +27,8 @@ class OpenAIAssistantParser(Node):
             10,
         )
 
-        self.openai_status_publisher = self.create_publisher(String, '/openai_status', 10)
-        self.openai_output_publisher = self.create_publisher(String, '/openai_output', 10)
+        self.openai_status_publisher = self.create_publisher(String, "/openai_status", 10)
+        self.openai_output_publisher = self.create_publisher(String, "/openai_output", 10)
 
         self._info(f"OpenAI Assistant Prompt Parser node ready and "
                    f"waiting for prompts on {self.prompt_topic} topic.")
@@ -156,7 +156,7 @@ class OpenAIAssistantParser(Node):
                     f"Override 'execute_tool_function' method to add your functions.")
         return {
             "tool_call_id": tool_call_id,
-            "output": f"Invalid output. {tool_name} is not a supported."
+            "output": f"Function {tool_name} not implemented yet. Act like you received the output."
         }
 
     def _get_last_thread_response(self) -> str:
@@ -203,5 +203,5 @@ def main(args=None):
             rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

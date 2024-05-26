@@ -23,8 +23,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'openai_assistant_parser = src.openai_assistant_parser:main',
-            'ros_gpt_assistant_nav2 = src.ros_gpt_assistant_nav2:main',
+            'openai_assistant_parser = ros_gpt_assistant_nav2.openai_assistant_parser:main',
+            'ros_gpt_assistant_nav2 = ros_gpt_assistant_nav2.ros_gpt_assistant_nav2:main',
+            'teleop_navigator = ros_gpt_assistant_nav2.teleop_navigator:main',
         ],
     },
 )

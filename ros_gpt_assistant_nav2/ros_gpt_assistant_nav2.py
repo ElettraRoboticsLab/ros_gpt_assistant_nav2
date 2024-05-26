@@ -1,10 +1,9 @@
 import json
+
 import rclpy
-
+from ros_gpt_assistant_nav2.context_navigator import ContextNavigator
+from ros_gpt_assistant_nav2.openai_assistant_parser import OpenAIAssistantParser
 from std_msgs.msg import String
-
-from .context_navigator import ContexNavigator
-from .openai_assistant_parser import OpenAIAssistantParser
 
 
 class Nav2RosGptAssistant(OpenAIAssistantParser):
@@ -37,9 +36,9 @@ class Nav2RosGptAssistant(OpenAIAssistantParser):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.navigator = ContexNavigator()
+        self.navigator = ContextNavigator()
 
-        self.tts_publisher = self.create_publisher(String, '/tts', 10)
+        self.tts_publisher = self.create_publisher(String, "/tts", 10)
 
     def handle_dict_response(self, response: dict) -> None:
         """
@@ -53,6 +52,8 @@ class Nav2RosGptAssistant(OpenAIAssistantParser):
             self.handle_navigation_action(response.get("navigation", {}))
 
     def handle_navigation_action(self, navigation: dict) -> None:
+        if navigation is None or not navigation:
+            return
         action = navigation.get("action", None)
         if action == "go_to_relative":
             self._info("Executing go_to_relative action")
@@ -60,7 +61,7 @@ class Nav2RosGptAssistant(OpenAIAssistantParser):
             if not coordinates:
                 self._error(f"Received coordinate is {coordinates}")
                 return
-            if type(coordinates) == list:
+            if type(coordinates) is list:
                 coordinates = coordinates[0]
             self.navigator.go_to_relative(
                 x=coordinates.get("x", None),
@@ -99,5 +100,5 @@ def main(args=None):
             rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
