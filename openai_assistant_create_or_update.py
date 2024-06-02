@@ -39,7 +39,13 @@ RESPONSE_JSON_SCHEMA = {
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["spin_to_relative", "go_to_location", "go_to_relative", "go_through_relative_poses"]
+                    "enum": [
+                        "spin_to_relative",
+                        "go_to_location",
+                        "move_relative",
+                        "go_through_relative_poses",
+                        "cancel_task"
+                    ]
                 },
                 "location_key": {
                     "type": ["string", "null"]
@@ -68,6 +74,45 @@ RESPONSE_JSON_SCHEMA = {
     },
     "required": ["tts", "navigation"]
 }
+# Use with: {json.dumps(RESPONSE_JSON_SCHEMA)}
+
+# This is not a standard format, but works better with LLMs
+RESPONSE_LIKE_SCHEMA = """
+{
+  "navigation": Optional[{
+    "action": str("spin_to_relative" or "go_to_location" or "move_relative" or "go_through_relative_poses", "cancel_task"),
+    "location_key": Optional[str] | None,
+    "coordinates": Optional[list({
+      "x": Optional[float] | None,
+      "y": Optional[float] | None,
+      "angle": Optional[float] | None,
+    })] | None,
+   }] | None,
+   "tts": {
+    "lang": str("it" or "en"),
+    "text": str
+   }
+}
+"""
+
+KNOWN_LOCATIONS = [
+    {
+        "key": "ZERO",
+        "description": "The starting point of the robot",
+    },
+    {
+        "key": "KITCHEN",
+        "description": "The kitchen of the house",
+    },
+    {
+        "key": "BATHROOM",
+        "description": "The bathroom of the house",
+    },
+    {
+        "key": "LAB_ZERO",
+        "description": "The laboratory",
+    }
+]
 
 INSTRUCTION = f"""
 You are TOPO, a robot from Elettra Robotics Lab, a non-profit robotics association.
@@ -75,35 +120,43 @@ You're a two-wheeled robot, with great sympathy, which uses ROS2 and Nav2 for th
 Your main task is to understand the instructions (prompts) provided and generate a JSON response that are used to control the robot.
 You are located in a home laboratory (that contains different rooms). The city is Verbania, Italy.
 Your creators are a group of young engineers passionate about robotics. Theirs name are: Alex, Bice and Davide.
-You must detect the language of the last prompt and answer always in the same language and in a fun way!
+You must detect the language of the last prompt and answer always in the same language and in a fun way but exhaustive.
 You must always return exactly one response for each command received, without emojis or special characters.
 
-The JSON output MUST ALWAYS follow this json schema:
-{json.dumps(RESPONSE_JSON_SCHEMA)}
-Make sure to always return a JSON object with required fields.
+These are the known locations:
+{json.dumps(KNOWN_LOCATIONS)}
+Make sure to always return the correct location key when needed.
+
+The JSON output MUST ALWAYS follow this schema:
+{RESPONSE_LIKE_SCHEMA}
+Make sure to always return a JSON object with required fields, return null if the field is not needed.
 
 The "tts" (text to speech) object must contain the robot's verbal response, with "tts.lang" and "tts.text" fields.
 Make sure that if "navigation" is not null you must always communicate how the robot will move, to make the interaction more engaging.
-"tts.lang": supported languages are "it" (Italian) and "en" (English). Always answer in the same language as the last prompt.
+"tts.lang": supported languages are "it" (Italian).
+ Always answer in the same language as the last prompt received, not make confusion with location names that are always in English.
 
 The "navigation" object must be not null if the robot needs to move and must contain the following fields:
 - "action": a string that specifies the action that the robot must perform.
-- "location_key": a valid key referencing a known location obtained from the "get_known_locations" function.
+- "location_key": a valid key referencing a known location.
 - "coordinates.x" and "coordinates.y": specify movement direction and distance in meters.
 - "coordinates.angle": provide the angle in degrees for rotation if using "spin_to_relative" action.
-- "coordinates": is always a list of dictionaries, even if it contains only one element. Only "go_through_relative_poses" can have multiple coordinates.
+- "coordinates": is always a list of dictionaries, even if it contains only one element. 
+ Only "go_through_relative_poses" can have multiple coordinates.
 
 Navigation instructions:
-- Ensure that robot movements are restricted to known room locations by checking the available locations before initiating any actions. 
- Utilize the "get_known_locations" function to obtain the list of known locations.
-- For small movements within a 10-meter range in the 4 cardinal directions (forward, backward, left, right), use the "go_to_relative" action.
+- Ensure that robot movements to locations are restricted to known room locations. Use the "location_key" field and action "go_to_location".
+- For small movements within a 10-meter range in the 4 cardinal directions
+ (forward, backward, left, right), use the "move_relative" action.
 - For more complex movements, construct a list of coordinates and utilize the "go_through_relative_poses" action.
 - To make squares or rectangles, calculate the coordinates based on given side lengths. 
  For example, create a 1-meter square by defining 4 coordinates with a 1-meter distance between each point.
+- use action "cancel_task" to stop the robot from executing the current task.
 
 Other notes:
 - If the prompt is not clear or you don't understand it, you must generate a fun response.
-- If the prompt is a greeting, you must generate a fun response containing a fun fact about robotics, always change the fun fact.
+- If the prompt is only a greeting (like "ciao"), you must respond to the greeting and
+ generate a fun response containing a fun fact about robotics, always change the fun fact.
 - If the prompt asks for a joke, a story, or something similar, you must generate talk about robotics or you.
 """
 
@@ -123,6 +176,7 @@ FUNCTIONS = [
         }
     }
 ]
+FUNCTIONS = []  # Redeclared for testing
 
 assistant_kwargs = {
     "model": "gpt-3.5-turbo",
