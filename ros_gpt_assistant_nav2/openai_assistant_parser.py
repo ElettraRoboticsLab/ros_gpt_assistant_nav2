@@ -9,12 +9,14 @@ from rclpy.node import Node
 from std_msgs.msg import String
 
 
-class OpenAIAssistantParser(Node):
+class OpenAIAssistantParserNode(Node):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__("openai_assistant_parser")
+    def __init__(self, node_name="openai_assistant_parser", *args, **kwargs):
+        super().__init__(node_name)
 
         self.prompt_topic = self.declare_parameter("prompt_topic", "/prompt").value
+        self.status_topic = self.declare_parameter("status_topic", "/openai_status").value
+        self.output_topic = self.declare_parameter("output_topic", "/openai_output").value
 
         self.client = OpenAI()  # set OPENAI_API_KEY and OPENAI_PROJECT_ID env vars
         self.assistant_id = os.environ.get("OPENAI_ASSISTANT_ID")
@@ -27,11 +29,15 @@ class OpenAIAssistantParser(Node):
             10,
         )
 
-        self.openai_status_publisher = self.create_publisher(String, "/openai_status", 10)
-        self.openai_output_publisher = self.create_publisher(String, "/openai_output", 10)
+        self.openai_status_publisher = self.create_publisher(String, self.status_topic, 10)
+        self.openai_output_publisher = self.create_publisher(String, self.output_topic, 10)
 
-        self._info(f"OpenAI Assistant Prompt Parser node ready and "
-                   f"waiting for prompts on {self.prompt_topic} topic.")
+        self._info(
+            "OpenAI Assistant Prompt Parser node ready and "
+            f"waiting for prompts on {self.prompt_topic} topic. "
+            f"Status will be published on {self.status_topic} topic. "
+            f"Output will be published on {self.output_topic} topic."
+        )
 
     def _prompt_callback(self, msg: String) -> None:
         """
@@ -47,8 +53,9 @@ class OpenAIAssistantParser(Node):
             response = self._parse_prompt(prompt)
         except Exception:
             self._error(traceback.format_exc())
-            response = self._error_response("Exception occurred during parsing prompt. "
-                                            "Check logs for details.")
+            response = self._error_response(
+                "Exception occurred during parsing prompt. Check logs for details."
+            )
 
         self._info(f"Response: {response}")
         self.handle_dict_response(response)
@@ -152,8 +159,10 @@ class OpenAIAssistantParser(Node):
         Execute the tool function based on the tool name.
         Override this method to add more tool functions.
         """
-        self._error(f"Executing tool function {tool_name}. "
-                    f"Override 'execute_tool_function' method to add your functions.")
+        self._error(
+            f"Executing tool function {tool_name}. "
+            "Override 'execute_tool_function' method to add your functions."
+        )
         return {
             "tool_call_id": tool_call_id,
             "output": f"Function {tool_name} not implemented yet. Act like you received the output."
@@ -190,7 +199,7 @@ class OpenAIAssistantParser(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = OpenAIAssistantParser()
+    node = OpenAIAssistantParserNode()
     try:
         rclpy.spin(node)
     except rclpy.exceptions.ROSInterruptException:

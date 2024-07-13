@@ -61,11 +61,11 @@ RESPONSE_JSON_SCHEMA = {
                             "y": {
                                 "type": ["number", "null"]
                             },
-                            "angle": {
+                            "orientation": {
                                 "type": ["number", "null"]
                             }
                         },
-                        "required": ["x", "y", "angle"]
+                        "required": ["x", "y", "orientation"]
                     }
                 }
             },
@@ -85,11 +85,11 @@ RESPONSE_LIKE_SCHEMA = """
     "coordinates": Optional[list({
       "x": Optional[float] | None,
       "y": Optional[float] | None,
-      "angle": Optional[float] | None,
+      "orientation": Optional[float] | None,
     })] | None,
    }] | None,
    "tts": {
-    "lang": str("it" or "en"),
+    "lang": str("it"),
     "text": str
    }
 }
@@ -156,7 +156,7 @@ Navigation instructions:
 Other notes:
 - If the prompt is not clear or you don't understand it, you must generate a fun response.
 - If the prompt is only a greeting (like "ciao"), you must respond to the greeting and
- generate a fun response containing a fun fact about robotics, always change the fun fact.
+ generate a fun response containing a short fun fact about robotics, always change the fun fact.
 - If the prompt asks for a joke, a story, or something similar, you must generate talk about robotics or you.
 """
 

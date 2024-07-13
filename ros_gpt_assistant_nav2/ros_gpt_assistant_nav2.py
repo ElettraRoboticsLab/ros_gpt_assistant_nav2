@@ -1,73 +1,131 @@
 import json
 
 import rclpy
-from ros_gpt_assistant_nav2.context_navigator import ContextNavigator
-from ros_gpt_assistant_nav2.openai_assistant_parser import OpenAIAssistantParser
+from ros_gpt_assistant_nav2.openai_assistant_parser import OpenAIAssistantParserNode
 from std_msgs.msg import String
 
 
-class Nav2RosGptAssistant(OpenAIAssistantParser):
+class Nav2RosGptAssistant(OpenAIAssistantParserNode):
     KNOWN_LOCATIONS = {
         "ZERO": {
-            "key": "ZERO",  # make sure openai understands this key
-            "name": "Initial position",
-            "description": "Initial position of the robot in the map",
             "x": 0,
             "y": 0,
-            "angle": 0,
+            "orientation": 0,
         },
         "KITCHEN": {
-            "key": "KITCHEN",  # make sure openai understands this key
-            "name": "Kitchen",
-            "description": "Just the kitchen",
             "x": 0.5,
             "y": 0.5,
-            "angle": 30,
+            "orientation": 30,
         },
         "BATHROOM": {
-            "key": "BATHROOM",  # make sure openai understands this key
-            "name": "Bathroom",
-            "description": "Just the bathroom",
             "x": -1.5,
             "y": 0.5,
-            "angle": 180,
+            "orientation": 180,
+        },
+        "LAB_ZERO": {
+            "x": 0,
+            "y": 0,
+            "orientation": 0,
         }
     }
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.navigator = ContextNavigator()
+        super().__init__("ros_gpt_assistant_nav2", *args, **kwargs)
 
-        self.tts_publisher = self.create_publisher(String, "/tts", 10)
+        self.tts_topic = self.declare_parameter("tts_topic", "/tts").value
+        self.enable_navigation = self.declare_parameter("enable_navigation", True).value
+
+        self.navigator = None
+        if self.enable_navigation:
+            from ros_gpt_assistant_nav2.context_navigator import ContextNavigator
+
+            self.navigator = ContextNavigator()
+
+        self.tts_publisher = self.create_publisher(String, self.tts_topic, 10)
 
     def handle_dict_response(self, response: dict) -> None:
         """
         Override the default response handler to add custom handling.
         """
         if "tts" in response:
-            msg = String()
-            msg.data = json.dumps(response.get("tts", {}))
-            self.tts_publisher.publish(msg)
+            self.handle_tts_action(response.get("tts", {}))
         if "navigation" in response:
-            self.handle_navigation_action(response.get("navigation", {}))
+            if self.navigator is None:
+                self._error("Navigation is not enabled.")
+            else:
+                self.handle_navigation_action(response.get("navigation", {}))
+
+    def handle_tts_action(self, tts: dict) -> None:
+        """
+        Redirect the TTS action from the response to the TTS topic.
+        """
+        if tts is None or not tts:
+            return
+        msg = String()
+        msg.data = json.dumps(tts)
+        self.tts_publisher.publish(msg)
 
     def handle_navigation_action(self, navigation: dict) -> None:
+        """
+        Handle the navigation action from the response.
+        This dict is generated from an LLM model, so it is not guaranteed to have all keys.
+        """
         if navigation is None or not navigation:
             return
+
         action = navigation.get("action", None)
-        if action == "go_to_relative":
-            self._info("Executing go_to_relative action")
-            coordinates = navigation.get("coordinates", None)
-            if not coordinates:
-                self._error(f"Received coordinate is {coordinates}")
+
+        if action == "spin_to_relative":
+            self._info("Executing spin_to_relative action")
+            coordinate = navigation.get("coordinates", [{}])[0]
+            if not coordinate:
+                self._error(f"Received coordinate is {navigation.get('coordinates', None)}")
                 return
-            if type(coordinates) is list:
-                coordinates = coordinates[0]
-            self.navigator.go_to_relative(
-                x=coordinates.get("x", None),
-                y=coordinates.get("y", None),
-                orientation=coordinates.get("angle", None),
+            self.navigator.spin_to_relative(
+                orientation=float(coordinate.get("orientation", None) or 0.0),
             )
+
+        if action == "go_to_location":
+            self._info("Executing go_to_location action")
+            location_key = navigation.get("location_key", None)
+            if location_key is None:
+                self._error("Received no location_key")
+                return
+            coordinate = self.KNOWN_LOCATIONS.get(location_key, None)
+            if coordinate is None:
+                self._error(f"Invalid location_key: {location_key}")
+                return
+            self.navigator.go_to_absolute(
+                x=float(coordinate.get("x", None) or 0.0),
+                y=float(coordinate.get("y", None) or 0.0),
+                orientation=float(coordinate.get("orientation", None) or 0.0),
+            )
+
+        if action == "move_relative":
+            self._info("Executing move_relative action")
+            coordinate = navigation.get("coordinates", [{}])[0]
+            if not coordinate:
+                self._error(f"Received coordinate is {navigation.get('coordinates', None)}")
+                return
+            self.navigator.move_relative(
+                x=float(coordinate.get("x", None) or 0.0),
+                y=float(coordinate.get("y", None) or 0.0),
+                orientation=float(coordinate.get("orientation", None) or 0.0),
+            )
+
+        if action == "go_through_relative_poses":
+            self._info("Executing go_through_relative_poses action")
+            coordinates = navigation.get("coordinates", [])
+            if not coordinates:
+                self._error(f"Received coordinates is {navigation.get('coordinates', None)}")
+                return
+            self.navigator.go_through_relative_poses(
+                list_of_poses=coordinates,
+            )
+
+        if action == "cancel_task":
+            self._info("Executing cancel_task action")
+            self.navigator.cancel_task()
 
     def execute_tool_function(self, tool_call_id: str, tool_name: str) -> dict:
         """
