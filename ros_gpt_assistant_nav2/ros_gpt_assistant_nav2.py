@@ -1,7 +1,12 @@
 import json
+import os
+import time
 
 import rclpy
+import requests
+from cv_bridge import CvBridgeError
 from ros_gpt_assistant_nav2.openai_assistant_parser import OpenAIAssistantParserNode
+from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
 
@@ -42,6 +47,20 @@ class Nav2RosGptAssistant(OpenAIAssistantParserNode):
             self.navigator = ContextNavigator()
 
         self.tts_publisher = self.create_publisher(String, self.tts_topic, 10)
+
+        self.gpt_image_key = os.getenv("OPENAI_TASK2")
+        self.image_sub = self.create_subscription(
+            Image, "/camera/image_raw", self.image_callback_camera,
+            rclpy.qos.QoSPresetProfiles.SENSOR_DATA.value
+        )
+        self.last_img = None
+
+    def image_callback_camera(self, data):
+        # self.get_logger().info('Received an image')
+        try:
+            self.last_img = self.bridge.imgmsg_to_cv2(data, "bgr8")
+        except CvBridgeError as e:
+            self.get_logger().error(f"cv2 error {e}")
 
     def handle_dict_response(self, response: dict) -> None:
         """
@@ -127,15 +146,62 @@ class Nav2RosGptAssistant(OpenAIAssistantParserNode):
             self._info("Executing cancel_task action")
             self.navigator.cancel_task()
 
+    def get_characteristics(self):
+        # OpenAI API Key
+
+        prompt = """
+          You will get an image of a shop table, there will be some items on it.
+          You need to describe the items on the table.
+          The items could be some souvenirs, gadgets, or lost and found objects.
+          """
+
+        # Getting the base64 string
+        # while last_img return None call it
+        while self.last_img is None:
+            time.sleep(0.5)
+            rclpy.spin_once(self, timeout_sec=0.5)
+
+        base64_image = self.encode_image(self.last_img)
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}"
+        }
+
+        payload = {
+            "model": "gpt-4o-mini",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "max_tokens": 800
+        }
+
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+        self.log(f"open ai response={response.json()}")
+        return response.json()["choices"][0]["message"]["content"]
+
     def execute_tool_function(self, tool_call_id: str, tool_name: str) -> dict:
         """
         Override the default tool function to add custom functions.
         """
         self._info(f"Executing tool function {tool_name}")
-        if tool_name == "get_known_locations":
+        if tool_name == "get_image_of_the_shop_table":
             return {
                 "tool_call_id": tool_call_id,
-                "output": str(self.KNOWN_LOCATIONS)
+                "output": str(self.get_characteristics())
             }
         return {
             "tool_call_id": tool_call_id,
