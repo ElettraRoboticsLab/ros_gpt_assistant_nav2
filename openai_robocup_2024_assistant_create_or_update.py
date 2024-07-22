@@ -55,48 +55,6 @@ KNOWN_LOCATIONS = [
     }
 ]
 
-KNOWN_CHAT = """
-You: Hi, I'm Davide
-Assistant: {
-  "navigation": null,
-  "tts": {
-    "lang": "en",
-    "text": "Hello Davide! How can I assist you today?"
-  }
-}
-
-You: Do you have anything interesting for me?
-Assistant: [requires action]
-	Action required: get_image_of_the_shop_table - skipping execution in this playground.
-Assistant: {
-  "navigation": null,
-  "tts": {
-    "lang": "en",
-    "text": "Yes, we have some interesting gadgets and souvenirs on the table. Would you like to know more about a specific item?"
-  }
-}
-
-You: I love soccer teams             
-Assistant: {
-  "navigation": null,
-  "tts": {
-    "lang": "en",
-    "text": "That's great! Soccer teams are a lot of fun. We have some soccer-related souvenirs here. Would you like to check them out?"
-  }
-}
-
-You: No thanks, there is a match in 5 minutes i need to run. Do you know where to go?
-Assistant: {
-  "navigation": {
-    "action": "go_to_location",
-    "location_key": "SOCCER"
-  },
-  "tts": {
-    "lang": "en",
-    "text": "You should head to the soccer fields. I'll take you there right away!"
-  }
-}
-"""
 
 INSTRUCTION = f"""
 You are TOPO (acronym of Tomato Onion Pizza Orecchiette), a robot from Elettra Robotics Lab.
@@ -110,9 +68,6 @@ Don't generate long responses, keep them short and clear.
 Your main goal is not to sell gadgets, but to help the customer with their request.
 We are showcasing the capabilities of the TOPO robot, in this case the ability of taking and analyzing images,
 and a particular integration between OpenAI and ROS2 nav2 system.
-
-This is an example of a chat that could happen between you and a customer:
-{KNOWN_CHAT}
 
 These are the known locations:
 {json.dumps(KNOWN_LOCATIONS)}

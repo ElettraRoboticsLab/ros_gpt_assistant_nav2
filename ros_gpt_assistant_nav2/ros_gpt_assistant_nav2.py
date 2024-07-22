@@ -1,10 +1,12 @@
+import base64
 import json
 import os
 import time
 
+import cv2
 import rclpy
 import requests
-from cv_bridge import CvBridgeError
+from cv_bridge import CvBridge, CvBridgeError
 from ros_gpt_assistant_nav2.openai_assistant_parser import OpenAIAssistantParserNode
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
@@ -12,25 +14,25 @@ from std_msgs.msg import String
 
 class Nav2RosGptAssistant(OpenAIAssistantParserNode):
     KNOWN_LOCATIONS = {
-        "ZERO": {
-            "x": 0,
-            "y": 0,
-            "orientation": 0,
+        "SHOP": {
+            "x": 1.4460,
+            "y": -0.3714,
+            "orientation": -90,
         },
-        "KITCHEN": {
-            "x": 0.5,
-            "y": 0.5,
-            "orientation": 30,
+        "SOCCER": {
+            "x": 0.2141,
+            "y": 0.9073,
+            "orientation": 90,
         },
-        "BATHROOM": {
-            "x": -1.5,
-            "y": 0.5,
-            "orientation": 180,
+        "AT_HOME": {
+            "x": 1.5690,
+            "y": 1.6209,
+            "orientation": 90,
         },
-        "LAB_ZERO": {
-            "x": 0,
-            "y": 0,
-            "orientation": 0,
+        "RESCUE": {
+            "x": 2.9617,
+            "y": 0.6791,
+            "orientation": 90,
         }
     }
 
@@ -48,12 +50,13 @@ class Nav2RosGptAssistant(OpenAIAssistantParserNode):
 
         self.tts_publisher = self.create_publisher(String, self.tts_topic, 10)
 
-        self.gpt_image_key = os.getenv("OPENAI_TASK2")
+        self.gpt_image_key = os.getenv("OPENAI_API_KEY_IMAGE")
         self.image_sub = self.create_subscription(
             Image, "/camera/image_raw", self.image_callback_camera,
             rclpy.qos.QoSPresetProfiles.SENSOR_DATA.value
         )
         self.last_img = None
+        self.bridge = CvBridge()
 
     def image_callback_camera(self, data):
         # self.get_logger().info('Received an image')
@@ -146,13 +149,22 @@ class Nav2RosGptAssistant(OpenAIAssistantParserNode):
             self._info("Executing cancel_task action")
             self.navigator.cancel_task()
 
+    def encode_image(self, image):
+        if image is None:
+            self.get_logger().error("Image is None")
+            return None
+        _, img_encoded = cv2.imencode('.jpg', image)
+        img_bytes = img_encoded.tobytes()
+        base64_bytes = base64.b64encode(img_bytes)
+        base64_string = base64_bytes.decode('utf-8')
+        return base64_string
+
     def get_characteristics(self):
         # OpenAI API Key
+        self._info("get_characteristics")
 
         prompt = """
-          You will get an image of a shop table, there will be some items on it.
-          You need to describe the items on the table.
-          The items could be some souvenirs, gadgets, or lost and found objects.
+            Describe what you see
           """
 
         # Getting the base64 string
@@ -164,7 +176,7 @@ class Nav2RosGptAssistant(OpenAIAssistantParserNode):
         base64_image = self.encode_image(self.last_img)
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
+            "Authorization": f"Bearer {self.gpt_image_key}"
         }
 
         payload = {
@@ -190,7 +202,7 @@ class Nav2RosGptAssistant(OpenAIAssistantParserNode):
         }
 
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-        self.log(f"open ai response={response.json()}")
+        self._info(f"open ai response={response.json()}")
         return response.json()["choices"][0]["message"]["content"]
 
     def execute_tool_function(self, tool_call_id: str, tool_name: str) -> dict:

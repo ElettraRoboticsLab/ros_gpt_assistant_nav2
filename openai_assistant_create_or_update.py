@@ -164,10 +164,10 @@ FUNCTIONS = [
     {
         "type": "function",
         "function": {
-            "name": "get_known_locations",
-            "description": "Obtain the list of known rooms and location. These includes (x, y, angle), name, description and key. "
-                           "The 'key' is the unique identifier of the location. You can use it to refer to the location in the responses. "
-                           "You must use this function to get the list of known rooms to before move the robot.",
+            "name": "get_image_of_the_shop_table",
+            "description": "When you are in the shop and someone asks information/to describe what is on the table "
+                           "You can use this method to get a description of what there is on the table "
+                           "(gadgets and souvenirs that you can sell or things from the lost and found).",
             "parameters": {
                 "type": "object",
                 "properties": {},
@@ -176,7 +176,6 @@ FUNCTIONS = [
         }
     }
 ]
-FUNCTIONS = []  # Redeclared for testing
 
 assistant_kwargs = {
     "model": "gpt-3.5-turbo",

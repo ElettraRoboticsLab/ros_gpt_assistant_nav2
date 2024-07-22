@@ -10,7 +10,6 @@ from nav_msgs.msg import Odometry
 
 import tf2_ros
 import tf2_geometry_msgs
-from geometry_msgs.msg import TransformStamped
 
 
 class ContextNavigator(BasicNavigator):
@@ -64,6 +63,7 @@ class ContextNavigator(BasicNavigator):
         super().destroy_node()
 
     def get_current_pose_tuple(self) -> Union[tuple[float, float, float], tuple[None, None, None]]:
+        # TODO: better test this function. This might not use ros dat correctly
         current_pose = self.get_transform_pose_frame()
         if current_pose is None:
             return None, None, None
