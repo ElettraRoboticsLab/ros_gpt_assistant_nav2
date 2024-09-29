@@ -210,7 +210,7 @@ class Nav2RosGptAssistant(OpenAIAssistantParserNode):
         Override the default tool function to add custom functions.
         """
         self._info(f"Executing tool function {tool_name}")
-        if tool_name == "get_image_of_the_shop_table":
+        if tool_name == "get_image_from_camera":
             return {
                 "tool_call_id": tool_call_id,
                 "output": str(self.get_characteristics())

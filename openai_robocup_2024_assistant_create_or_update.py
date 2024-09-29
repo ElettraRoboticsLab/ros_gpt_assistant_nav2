@@ -97,7 +97,7 @@ FUNCTIONS = [
     {
         "type": "function",
         "function": {
-            "name": "get_image_of_the_shop_table",
+            "name": "get_image_from_camera",
             "description": "When you are in the shop and someone asks information/to describe what is on the table "
                            "You can use this method to get a description of what there is on the table "
                            "(gadgets and souvenirs that you can sell or things from the lost and found).",
